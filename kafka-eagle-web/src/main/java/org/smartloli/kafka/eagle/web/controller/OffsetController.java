@@ -168,6 +168,7 @@ public class OffsetController {
 				object.put("offset", "<span class='badge badge-success'>" + offsetInfo.getOffset() + "</span>");
 			}
 			object.put("lag", "<span class='badge badge-danger'>" + offsetInfo.getLag() + "</span>");
+			object.put("lead","<span class='badge badge-danger'>"+(offsetInfo.getLogSize()-offsetInfo.getOffset())+ "</span>");
 			object.put("owner", offsetInfo.getOwner());
 			object.put("created", offsetInfo.getCreate());
 			object.put("modify", offsetInfo.getModify());
