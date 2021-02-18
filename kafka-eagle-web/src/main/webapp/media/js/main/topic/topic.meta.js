@@ -23,6 +23,8 @@ $(document).ready(function() {
 		}, {
 			"mData" : 'isr'
 		}, {
+			"mData" : 'hw'
+		},{
 			"mData" : 'preferred_leader'
 		}, {
 			"mData" : 'under_replicated'

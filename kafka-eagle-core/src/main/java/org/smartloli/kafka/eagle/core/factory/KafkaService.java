@@ -260,4 +260,5 @@ public interface KafkaService {
      */
     public void ssl(Properties props, String clusterAlias);
 
+    public long getPartitionHighWater(String clusterAlias, String tname, Set<Integer> isr_set);
 }

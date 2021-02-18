@@ -136,6 +136,7 @@
                                             <th>Leader</th>
                                             <th>Replicas</th>
                                             <th>In Sync Replicas</th>
+                                            <th>High Water </th>
                                             <th>Preferred Leader</th>
                                             <th>Under Replicated</th>
                                         </tr>

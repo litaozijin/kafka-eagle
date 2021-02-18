@@ -210,13 +210,23 @@ public class TopicController {
         List<MetadataInfo> metadatas = topicService.metadata(clusterAlias, tname, map);
         JSONArray aaDatas = new JSONArray();
         for (MetadataInfo metadata : metadatas) {
+            String isr = metadata.getIsr();
+            String trim_isr = isr.replaceAll("\\[|\\]","");
+            String [] isr_parts = trim_isr.split(",");
+            Set<Integer> isr_set = new HashSet<>();
+            for (String part : isr_parts){
+                isr_set.add(Integer.valueOf(part));
+            }
+            long hw = isr_parts.length ==0 ?-1:kafkaService.getPartitionHighWater(clusterAlias,tname,isr_set);
             JSONObject object = new JSONObject();
             object.put("topic", tname);
             object.put("partition", metadata.getPartitionId());
             object.put("logsize", metadata.getLogSize());
             object.put("leader", metadata.getLeader());
-            object.put("replicas", metadata.getReplicas());
-            object.put("isr", metadata.getIsr());
+            object.put("isr", isr);
+            object.put("replicas",  metadata.getReplicas());
+            object.put("hw", hw);
+
             if (metadata.isPreferredLeader()) {
                 object.put("preferred_leader", "<span class='badge badge-success'>true</span>");
             } else {

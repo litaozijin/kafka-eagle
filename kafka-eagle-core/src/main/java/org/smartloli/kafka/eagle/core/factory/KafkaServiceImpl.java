@@ -1116,19 +1116,26 @@ public class KafkaServiceImpl implements KafkaService {
         if (SystemConfigUtils.getBooleanProperty(clusterAlias + ".kafka.eagle.ssl.enable")) {
             ssl(props, clusterAlias);
         }
-        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
         Set<TopicPartition> tps = new HashSet<>();
         for (int partitionid : partitionids) {
             TopicPartition tp = new TopicPartition(topic, partitionid);
             tps.add(tp);
         }
-
-        consumer.assign(tps);
-        java.util.Map<TopicPartition, Long> endLogSize = consumer.endOffsets(tps);
-        if (consumer != null) {
-            consumer.close();
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+        java.util.Map<TopicPartition, Long> endLogSize = new HashMap<>();
+        //catch exception to close kafka connection,avoid file-handler leak
+        try {
+            consumer.assign(tps);
+            endLogSize = consumer.endOffsets(tps);
+        }catch (Exception e){
+            LOG.error("Get endoffset has error, msg is " + e.getMessage());
+            e.printStackTrace();
+        }finally {
+            if (consumer != null) {
+                consumer.close();
+            }
+            return endLogSize;
         }
-        return endLogSize;
     }
 
     /**
@@ -1209,6 +1216,59 @@ public class KafkaServiceImpl implements KafkaService {
             }
         }
         return realLogSize;
+    }
+
+
+    /**
+     * Get high-water of each partition
+     */
+    public long getPartitionHighWater(String clusterAlias, String topic, Set<Integer> partitionids) {
+        long hw = 0;
+        Properties props = new Properties();
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, Kafka.KAFKA_EAGLE_SYSTEM_GROUP);
+        props.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, getKafkaBrokerServer(clusterAlias));
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getCanonicalName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getCanonicalName());
+        if (SystemConfigUtils.getBooleanProperty(clusterAlias + ".kafka.eagle.sasl.enable")) {
+            sasl(props, clusterAlias);
+        }
+        if (SystemConfigUtils.getBooleanProperty(clusterAlias + ".kafka.eagle.ssl.enable")) {
+            ssl(props, clusterAlias);
+        }
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+        Set<TopicPartition> tps = new HashSet<>();
+        for (int partitionid : partitionids) {
+            TopicPartition tp = new TopicPartition(topic, partitionid);
+            tps.add(tp);
+        }
+        try {
+            consumer.assign(tps);
+            java.util.Map<TopicPartition, Long> endLogSize = consumer.endOffsets(tps);
+            List<Long> ends  = new ArrayList<Long>();
+            for (Entry<TopicPartition, Long> entry : endLogSize.entrySet()) {
+                long endoffset = entry.getValue();
+                ends.add(endoffset);
+            }
+            Collections.sort(ends, new Comparator< Long >() {
+                @Override
+                public int compare(Long lhs, Long rhs) {
+                    if ( lhs > rhs ) {
+                        return 1;
+                    } else {
+                        return -1;
+                    }
+                }
+            });
+            hw = ends.size()>0?ends.get(0):-1;
+        } catch (Exception e) {
+            LOG.error("Get high-water of partition has error, msg is " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            if (consumer != null) {
+                consumer.close();
+            }
+            return hw;
+        }
     }
 
     /**
